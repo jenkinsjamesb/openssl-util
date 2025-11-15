@@ -63,8 +63,8 @@ COL_WHITE="\033[1;37m"
 COL_NONE="\033[0m" # No colours
 
 die() {
-	echo -e "${COL_LRED}""$@""${COL_NONE}" >&2
-	exit 1
+        echo -e "${COL_LRED}""$@""${COL_NONE}" >&2
+        exit 1
 }
 
 usage="usage: openssl-util [--create-root|--create-intermediate|--create-certificate] --root-path --intermediate-path --certificate-type <user|server> --subject <subject>"
@@ -72,112 +72,112 @@ usage="usage: openssl-util [--create-root|--create-intermediate|--create-certifi
 # generates a long passphrase from /dev/urandom
 # usage: generatePassphrase <ca root> [<ca/cert name>]
 generatePassphrase() {
-	local caRoot="$1"
-	local caName="${2:-`deriveName $caRoot`}"
+        local caRoot="$1"
+        local caName="${2:-`deriveName $caRoot`}"
 
-	dd status=none if=/dev/urandom bs=128 count=1 \
-		| base64 \
-		| tr -d '\n' \
-		| sed -e 's/=*$//' \
-		> $caRoot/private/${caName}.passphrase
-	chmod 400 $caRoot/private/${caName}.passphrase
+        dd status=none if=/dev/urandom bs=128 count=1 \
+                | base64 \
+                | tr -d '\n' \
+                | sed -e 's/=*$//' \
+                > $caRoot/private/${caName}.passphrase
+        chmod 400 $caRoot/private/${caName}.passphrase
 
-	echo -e "${COL_BROWN}passphrase for ${caName} created at ${COL_YELLOW}$caRoot/private/${caName}.passphrase${COL_NONE}"
+        echo -e "${COL_BROWN}passphrase for ${caName} created at ${COL_YELLOW}$caRoot/private/${caName}.passphrase${COL_NONE}"
 }
 
 # derive the name of a CA based on its folder name
 # usage: deriveName <CA path>
 deriveName() {
-	basename "$1"
+        basename "$1"
 }
 
 # function that calls openssl, but shows the user what we're doing first
 OPENSSL=`which openssl`
 openssl() {
-	echo -e "${COL_WHITE}+ openssl" "$@" "${COL_GRAY}"
-	$OPENSSL "$@"	
-	echo -e "${COL_NONE}"
+        echo -e "${COL_WHITE}+ openssl" "$@" "${COL_GRAY}"
+        $OPENSSL "$@"	
+        echo -e "${COL_NONE}"
 }
 
 # create a private key for the given CA
 # usage: createPrivateKey <ca folder> <ca name> <key length> [<new name>]
 createPrivateKey() {
-	local caRoot="$1"
-	local keyLen="$2"
-	local caName="${3:-`deriveName $caRoot`}"
+        local caRoot="$1"
+        local keyLen="$2"
+        local caName="${3:-`deriveName $caRoot`}"
 
-	[ -d $caRoot ] || die "not a directory: $caRoot"
-	#local caName=`deriveName $caRoot`
+        [ -d $caRoot ] || die "not a directory: $caRoot"
+        #local caName=`deriveName $caRoot`
 
-	blatMaybe $caRoot/private/${caName}.key.pem
+        blatMaybe $caRoot/private/${caName}.key.pem
 
-	mkdir -p $caRoot/private
-	chmod 700 $caRoot/private
+        mkdir -p $caRoot/private
+        chmod 700 $caRoot/private
 
-	generatePassphrase $caRoot ${caName}
+        generatePassphrase $caRoot ${caName}
 
-	openssl genrsa -aes256 \
-		-passout file:$caRoot/private/${caName}.passphrase \
-		-out $caRoot/private/${caName}.key.pem $keyLen
+        openssl genrsa -aes256 \
+                -passout file:$caRoot/private/${caName}.passphrase \
+                -out $caRoot/private/${caName}.key.pem $keyLen
 
-	chmod 400 $caRoot/private/${caName}.key.pem
+        chmod 400 $caRoot/private/${caName}.key.pem
 }
 
 # simply verifies that we can decrypt the given private key with the given passphrase
 verifyPrivateKey() {
-	local caRoot="$1"
+        local caRoot="$1"
 
-	[ -d $caRoot ] || die "not a directory: $caRoot"
-	local caName=`deriveName $caRoot`
+        [ -d $caRoot ] || die "not a directory: $caRoot"
+        local caName=`deriveName $caRoot`
 
-	openssl pkey -in ${caRoot}/private/${caName}.key.pem \
-		-passin file:${caRoot}/private/${caName}.passphrase \
-		-noout
+        openssl pkey -in ${caRoot}/private/${caName}.key.pem \
+                -passin file:${caRoot}/private/${caName}.passphrase \
+                -noout
 }
 
 # create a self-signed root cert
 # usage: createSelfSignedRootCert <ca folder> <ca name>
 createSelfSignedRootCert() {
-	local caRoot="$1"
+        local caRoot="$1"
 
-	[ -d $caRoot ] || die "not a directory: $caRoot"
-	local caName=`deriveName $caRoot`
+        [ -d $caRoot ] || die "not a directory: $caRoot"
+        local caName=`deriveName $caRoot`
 
-	blatMaybe $caRoot/certs/${caName}.crt.pem
+        blatMaybe $caRoot/certs/${caName}.crt.pem
 
-	mkdir -p $caRoot/certs
+        mkdir -p $caRoot/certs
 
-	if [ -z "$SUBJECT" ]; then
-		openssl req \
-			-config $caRoot/openssl.${caName}.cnf \
-			-key $caRoot/private/${caName}.key.pem \
-			-passin file:$caRoot/private/${caName}.passphrase \
-			-new -x509 -days 7300 -sha256 \
-			-extensions v3_ca \
-			-out $caRoot/certs/${caName}.crt.pem
-	else
-		openssl req \
-			-config $caRoot/openssl.${caName}.cnf \
-			-key $caRoot/private/${caName}.key.pem \
-			-passin file:$caRoot/private/${caName}.passphrase \
-			-new -x509 -days 7300 -sha256 \
-			-extensions v3_ca \
-			-subj "$SUBJECT" \
-			-out $caRoot/certs/${caName}.crt.pem
-	fi
+        if [ -z "$SUBJECT" ]; then
+                openssl req \
+                        -config $caRoot/openssl.${caName}.cnf \
+                        -key $caRoot/private/${caName}.key.pem \
+                        -passin file:$caRoot/private/${caName}.passphrase \
+                        -new -x509 -days 7300 -sha256 \
+                        -extensions v3_ca \
+                        -out $caRoot/certs/${caName}.crt.pem
+        else
+                openssl req \
+                        -config $caRoot/openssl.${caName}.cnf \
+                        -key $caRoot/private/${caName}.key.pem \
+                        -passin file:$caRoot/private/${caName}.passphrase \
+                        -new -x509 -days 7300 -sha256 \
+                        -extensions v3_ca \
+                        -subj "$SUBJECT" \
+                        -out $caRoot/certs/${caName}.crt.pem
+        fi
 }
 
 # create CA folder structure
 # usage: createIntermediateFolderAndConfig <ca folder> <ca name>
 createIntermediateFolderAndConfig() {
-	local caRoot="$1"
-	local caName=`deriveName $caRoot`
+        local caRoot="$1"
+        local caName=`deriveName $caRoot`
 
-	blatMaybe $caRoot
+        blatMaybe $caRoot
 
-	mkdir -p $caRoot
+        mkdir -p $caRoot
 
-	cat > $caRoot/openssl.${caName}.cnf <<EOF
+        cat > $caRoot/openssl.${caName}.cnf <<EOF
 [ ca ]
 default_ca = CA_default
 
@@ -293,14 +293,14 @@ EOF
 # create CA folder structure
 # usage: createIntermediateFolderAndConfig <ca folder> <ca name>
 createRootFolderAndConfig() {
-	local caRoot="$1"
-	local caName=`deriveName $caRoot`
+        local caRoot="$1"
+        local caName=`deriveName $caRoot`
 
-	blatMaybe $caRoot
+        blatMaybe $caRoot
 
-	mkdir -p $caRoot
+        mkdir -p $caRoot
 
-	cat > $caRoot/openssl.${caName}.cnf <<EOF
+        cat > $caRoot/openssl.${caName}.cnf <<EOF
 # OpenSSL root CA configuration file.
 
 [ ca ]
@@ -440,176 +440,190 @@ EOF
 # Otherwise die. usage: 
 # blatMaybe <path>
 blatMaybe() {
-	local path="$1"
+        local path="$1"
 
-	[ ! -e "$path" ] && return # do nothing if the path does not exist
-	[ $OVERWRITE -eq 1 ] || die "$path exists; specify --overwrite to ignore"
+        [ ! -e "$path" ] && return # do nothing if the path does not exist
+        [ $OVERWRITE -eq 1 ] || die "$path exists; specify --overwrite to ignore"
 
-	rm -rf "$path"
+        rm -rf "$path"
 }
 
 # create a CSR for an intermediate CA cert (beneath the root)
 # usage: createIntermediateCsr <CA root> <CA name> <root CA root> <root CA name>
 createIntermediateCsr() {
-	local caRoot="$1"
-	local caName=`deriveName $caRoot`
-	local rootCaRoot="$2"
-	local rootCaName=`deriveName $rootCaRoot`
+        local caRoot="$1"
+        local caName=`deriveName $caRoot`
+        local rootCaRoot="$2"
+        local rootCaName=`deriveName $rootCaRoot`
 
-	[ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
-	[ -d $caRoot ] || die "not a directory: $caRoot"
+        [ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
+        [ -d $caRoot ] || die "not a directory: $caRoot"
 
-	blatMaybe $caRoot/csr/${caName}.csr.pem
+        blatMaybe $caRoot/csr/${caName}.csr.pem
 
-	mkdir -p $caRoot/csr
+        mkdir -p $caRoot/csr
 
-	if [ -z "$SUBJECT" ]; then
-		openssl req \
-			-config $caRoot/openssl.${caName}.cnf \
-			-key $caRoot/private/${caName}.key.pem \
-			-passin file:$caRoot/private/${caName}.passphrase \
-			-new -sha256 -out $caRoot/csr/${caName}.csr.pem
+        if [ -z "$SUBJECT" ]; then
+                openssl req \
+                        -config $caRoot/openssl.${caName}.cnf \
+                        -key $caRoot/private/${caName}.key.pem \
+                        -passin file:$caRoot/private/${caName}.passphrase \
+                        -new -sha256 -out $caRoot/csr/${caName}.csr.pem
 
-	else
-		openssl req \
-			-config $caRoot/openssl.${caName}.cnf \
-			-key $caRoot/private/${caName}.key.pem \
-			-passin file:$caRoot/private/${caName}.passphrase \
-			-subj "$SUBJECT" \
-			-new -sha256 -out $caRoot/csr/${caName}.csr.pem
-	fi
+        else
+                openssl req \
+                        -config $caRoot/openssl.${caName}.cnf \
+                        -key $caRoot/private/${caName}.key.pem \
+                        -passin file:$caRoot/private/${caName}.passphrase \
+                        -subj "$SUBJECT" \
+                        -new -sha256 -out $caRoot/csr/${caName}.csr.pem
+        fi
 }
 
 signIntermediateCsr() {
-	local caRoot="$1"
-	local caName=`deriveName $caRoot`
-	local rootCaRoot="$2"
-	local rootCaName=`deriveName $rootCaRoot`
+        local caRoot="$1"
+        local caName=`deriveName $caRoot`
+        local rootCaRoot="$2"
+        local rootCaName=`deriveName $rootCaRoot`
 
-	[ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
-	[ -d $caRoot ] || die "not a directory: $caRoot"
+        [ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
+        [ -d $caRoot ] || die "not a directory: $caRoot"
 
-	blatMaybe $caRoot/certs/${caName}.crt.pem
+        blatMaybe $caRoot/certs/${caName}.crt.pem
 
-	mkdir -p $caRoot/certs
-	openssl x509 -req -days 3650 \
-		-in $caRoot/csr/${caName}.csr.pem \
-		-CA $rootCaRoot/certs/${rootCaName}.crt.pem \
-		-CAkey $rootCaRoot/private/${rootCaName}.key.pem \
-		-passin file:$rootCaRoot/private/${rootCaName}.passphrase \
-		-out $caRoot/certs/${caName}.crt.pem \
-		-extfile $rootCaRoot/openssl.${rootCaName}.cnf \
-		-extensions v3_intermediate_ca \
-		-set_serial 00 \
-		-sha256
+        mkdir -p $caRoot/certs
+        openssl x509 -req -days 3650 \
+                -in $caRoot/csr/${caName}.csr.pem \
+                -CA $rootCaRoot/certs/${rootCaName}.crt.pem \
+                -CAkey $rootCaRoot/private/${rootCaName}.key.pem \
+                -passin file:$rootCaRoot/private/${rootCaName}.passphrase \
+                -out $caRoot/certs/${caName}.crt.pem \
+                -extfile $rootCaRoot/openssl.${rootCaName}.cnf \
+                -extensions v3_intermediate_ca \
+                -set_serial 00 \
+                -sha256
 }
 
 verifyIntermediateCert() {
-	local caRoot="$1"
-	local caName=`deriveName $caRoot`
-	local rootCaRoot="$2"
-	local rootCaName=`deriveName $rootCaRoot`
+        local caRoot="$1"
+        local caName=`deriveName $caRoot`
+        local rootCaRoot="$2"
+        local rootCaName=`deriveName $rootCaRoot`
 
-	[ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
-	[ -d $caRoot ] || die "not a directory: $caRoot"
+        [ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
+        [ -d $caRoot ] || die "not a directory: $caRoot"
 
-	openssl verify \
-		-CAfile $rootCaRoot/certs/${rootCaName}.crt.pem \
-		$caRoot/certs/${caName}.crt.pem
+        openssl verify \
+                -CAfile $rootCaRoot/certs/${rootCaName}.crt.pem \
+                $caRoot/certs/${caName}.crt.pem
 }
 
 createIntermediateChain() {
-	local caRoot="$1"
-	local caName=`deriveName $caRoot`
-	local rootCaRoot="$2"
-	local rootCaName=`deriveName $rootCaRoot`
+        local caRoot="$1"
+        local caName=`deriveName $caRoot`
+        local rootCaRoot="$2"
+        local rootCaName=`deriveName $rootCaRoot`
 
-	[ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
-	[ -d $caRoot ] || die "not a directory: $caRoot"
+        [ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
+        [ -d $caRoot ] || die "not a directory: $caRoot"
 
-	cat $caRoot/certs/${caName}.crt.pem \
-		$rootCaRoot/certs/${rootCaName}.crt.pem \
-		> $caRoot/certs/${caName}-chain.crt.pem
+        cat $caRoot/certs/${caName}.crt.pem \
+                $rootCaRoot/certs/${rootCaName}.crt.pem \
+                > $caRoot/certs/${caName}-chain.crt.pem
 }
 
 # create a CSR for a cert (beneath the intermediate)
 # usage: createCertificateCsr <cert name> <int CA root>
 createCertificateCsr() {
-	local certName="$1"
-	local caRoot="$2"
-	local caName=`deriveName $caRoot`
+        local certName="$1"
+        local caRoot="$2"
+        local caName=`deriveName $caRoot`
 
-	[ -d $caRoot ] || die "not a directory: $caRoot"
+        [ -d $caRoot ] || die "not a directory: $caRoot"
 
-	blatMaybe $caRoot/csr/${certName}.csr.pem
+        blatMaybe $caRoot/csr/${certName}.csr.pem
 
-	if [ -z "$SUBJECT" ]; then
-		openssl req \
-			-config $caRoot/openssl.${caName}.cnf \
-			-key $caRoot/private/${certName}.key.pem \
-			-passin file:$caRoot/private/${certName}.passphrase \
-			-new -sha256 -out $caRoot/csr/${certName}.csr.pem
-	else
-		openssl req \
-			-config $caRoot/openssl.${caName}.cnf \
-			-key $caRoot/private/${certName}.key.pem \
-			-passin file:$caRoot/private/${certName}.passphrase \
-			-subj "$SUBJECT" \
-			-new -sha256 -out $caRoot/csr/${certName}.csr.pem
+        if [ -z "$SUBJECT" ]; then
+                openssl req \
+                        -config $caRoot/openssl.${caName}.cnf \
+                        -key $caRoot/private/${certName}.key.pem \
+                        -passin file:$caRoot/private/${certName}.passphrase \
+                        -new -sha256 -out $caRoot/csr/${certName}.csr.pem
+        else
+                openssl req \
+                        -config $caRoot/openssl.${caName}.cnf \
+                        -key $caRoot/private/${certName}.key.pem \
+                        -passin file:$caRoot/private/${certName}.passphrase \
+                        -subj "$SUBJECT" \
+                        -new -sha256 -out $caRoot/csr/${certName}.csr.pem
 
-	fi
+        fi
 }
 
 signCertificateCsr() {
-	local certName="$1"
-	local caRoot="$2"
-	local caName=`deriveName $caRoot`
-	local caType="$3"
+        local certName="$1"
+        local caRoot="$2"
+        local caName=`deriveName $caRoot`
+        local caType="$3"
 
-	case "$caType" in
-		user) caType="usr_cert" ;;
-		server) caType="server_cert" ;;
-		*) die "--certificate-type must be 'user' or 'server'"
-	esac
+        case "$caType" in
+                user) caType="usr_cert" ;;
+                server) caType="server_cert" ;;
+                *) die "--certificate-type must be 'user' or 'server'"
+        esac
 
-	[ -d $caRoot ] || die "not a directory: $caRoot"
+        [ -d $caRoot ] || die "not a directory: $caRoot"
 
-	blatMaybe $caRoot/certs/${certName}.crt.pem
+        blatMaybe $caRoot/certs/${certName}.crt.pem
 
-	openssl x509 -req -days 375 \
-		-in $caRoot/csr/${certName}.csr.pem \
-		-CA $caRoot/certs/${caName}.crt.pem \
-		-CAkey $caRoot/private/${caName}.key.pem \
-		-passin file:$caRoot/private/${caName}.passphrase \
-		-out $caRoot/certs/${certName}.crt.pem \
-		-set_serial 00 \
-		-extfile $caRoot/openssl.${caName}.cnf \
-		-extensions $caType \
-		-sha256
+        openssl x509 -req -days 375 \
+                -in $caRoot/csr/${certName}.csr.pem \
+                -CA $caRoot/certs/${caName}.crt.pem \
+                -CAkey $caRoot/private/${caName}.key.pem \
+                -passin file:$caRoot/private/${caName}.passphrase \
+                -out $caRoot/certs/${certName}.crt.pem \
+                -set_serial 00 \
+                -extfile $caRoot/openssl.${caName}.cnf \
+                -extensions $caType \
+                -sha256
 }
 
 verifyCertificate() {
-	local certName="$1"
-	local caRoot="$2"
-	local caName=`deriveName $caRoot`
-	local rootCaRoot="$3"
-	local rootCaName=`deriveName $rootCaRoot`
+        local certName="$1"
+        local caRoot="$2"
+        local caName=`deriveName $caRoot`
+        local rootCaRoot="$3"
+        local rootCaName=`deriveName $rootCaRoot`
 
-	[ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
-	[ -d $caRoot ] || die "not a directory: $caRoot"
+        [ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
+        [ -d $caRoot ] || die "not a directory: $caRoot"
 
-	openssl verify \
-		-CAfile $caRoot/certs/${caName}-chain.crt.pem \
-		$caRoot/certs/${certName}.crt.pem
+        openssl verify \
+                -CAfile $caRoot/certs/${caName}-chain.crt.pem \
+                $caRoot/certs/${certName}.crt.pem
+}
+
+loadCSR() {
+        echo "load csr to ./intermediate/csr/cert_name.csr.pem"
+        local certName="$1"
+        local caRoot="$2"
+        local csrFile="$3"
+
+        cat $csrFile > $caRoot/csr/${certName}.csr.pem
+}
+
+revokeCertificate() {
+        echo "add cert to intermediate/crl"
 }
 
 MODE=''				# will be r (create-root), i (create-intermediate), 
-					#   c (create-cert), or v (verify)
+                                        #   c (create-cert), or v (verify)
 OVERWRITE=0
 ROOT_PATH=''
 INTERMEDIATE_PATH=''
 CERT_NAME=''
 CERT_TYPE='server'
+CSR_FILE=''
 SUBJECT=''
 
 # h - check for option -h without parameters; gives error on unsupported options;
@@ -618,77 +632,110 @@ SUBJECT=''
 # abc - check for options -a, -b, -c; gives errors on unsupported options;
 # :abc - check for options -a, -b, -c; silences errors on unsupported options;
 O=`getopt -n openssl-util \
-	-l subject:,create-root,create-intermediate,create-certificate,root-path:,intermediate-path:,certificate-name:,overwrite,certificate-type: -- \
-	ric "$@"` || die "$usage"
+        -l subject:,create-root,create-intermediate,create-certificate,sign-certificate,revoke-certificate,root-path:,intermediate-path:,certificate-name:,overwrite,certificate-type:,csr-file:, -- \
+        ric "$@"` || die "$usage"
 eval set -- "$O"
 while true; do
-    case "$1" in
-    --overwrite)			OVERWRITE=1; shift;;
+        case "$1" in
+        --overwrite)			OVERWRITE=1; shift;;
 
-    --create-root|-r)
-	    [ -n "$MODE" ] && die "cannot use multiple --create commands together"
-	    MODE='r'
-	    shift
-	    ;;
-    --create-intermediate|-i)	
-	    [ -n "$MODE" ] && die "cannot use multiple --create commands together"
-	    MODE='i'
-	    shift
-	    ;;
-    --create-certificate|-c)
-	    [ -n "$MODE" ] && die "cannot use multiple --create commands together"
-	    MODE='c'
-	    shift
-	    ;;
+        --create-root|-r)
+                [ -n "$MODE" ] && die "cannot use multiple --create commands together"
+                MODE='r'
+                shift
+                ;;
+        --create-intermediate|-i)	
+                [ -n "$MODE" ] && die "cannot use multiple --create commands together"
+                MODE='i'
+                shift
+                ;;
+        --create-certificate|-c)
+                [ -n "$MODE" ] && die "cannot use multiple --create commands together"
+                MODE='c'
+                shift
+                ;;
 
-    --subject)				SUBJECT="$2"; shift 2;;
-    --root-path)			ROOT_PATH="$2"; shift 2;;
-    --intermediate-path)	INTERMEDIATE_PATH="$2"; shift 2;;
-    --certificate-name)		CERT_NAME="$2"; shift 2;;
-    --certificate-type)		CERT_TYPE="$2"; shift 2;;
+        --sign-certificate) 
+                # Just sign a cert without creating a csr
+                MODE='s'
+                shift
+                ;;
 
-    --)			shift; break;;
-    *)			die "$usage";;
-    esac
+        --revoke-certificate)
+                # Add cert to crl
+                MODE='d'
+                shift
+                ;;
+
+
+        --subject)                      SUBJECT="$2"; shift 2;;
+        --root-path)                    ROOT_PATH="$2"; shift 2;;
+        --intermediate-path)            INTERMEDIATE_PATH="$2"; shift 2;;
+        --certificate-name)             CERT_NAME="$2"; shift 2;;
+        --certificate-type)             CERT_TYPE="$2"; shift 2;;
+        --csr-file)                     CSR_FILE="$2"; shift 2;;
+
+        --)                             shift; break;;
+        *)                              die "$usage";;
+esac
 done
 
 case $MODE in
-	r)
-		[ -n "$ROOT_PATH" ] || die "must specify --root-path"
+        r)
+                [ -n "$ROOT_PATH" ] || die "must specify --root-path"
 
-		createRootFolderAndConfig $ROOT_PATH
-		createPrivateKey $ROOT_PATH 4096
-		createSelfSignedRootCert $ROOT_PATH
-		;;
+                createRootFolderAndConfig $ROOT_PATH
+                createPrivateKey $ROOT_PATH 4096
+                createSelfSignedRootCert $ROOT_PATH
+                ;;
 
-	i)
-		[ -n "$ROOT_PATH" ] || die "must specify --root-path"
-		[ -n "$INTERMEDIATE_PATH" ] || die "must specify --intermediate-path"
-		[ -d "$ROOT_PATH" ] || die "not a directory: $ROOT_PATH"
+        i)
+                [ -n "$ROOT_PATH" ] || die "must specify --root-path"
+                [ -n "$INTERMEDIATE_PATH" ] || die "must specify --intermediate-path"
+                [ -d "$ROOT_PATH" ] || die "not a directory: $ROOT_PATH"
 
-		createIntermediateFolderAndConfig $INTERMEDIATE_PATH
-		createPrivateKey $INTERMEDIATE_PATH 2048
-		createIntermediateCsr $INTERMEDIATE_PATH $ROOT_PATH
-		signIntermediateCsr $INTERMEDIATE_PATH $ROOT_PATH
+                createIntermediateFolderAndConfig $INTERMEDIATE_PATH
+                createPrivateKey $INTERMEDIATE_PATH 2048
+                createIntermediateCsr $INTERMEDIATE_PATH $ROOT_PATH
+                signIntermediateCsr $INTERMEDIATE_PATH $ROOT_PATH
 
-		verifyIntermediateCert $INTERMEDIATE_PATH $ROOT_PATH
-		createIntermediateChain $INTERMEDIATE_PATH $ROOT_PATH
-		;;
+                verifyIntermediateCert $INTERMEDIATE_PATH $ROOT_PATH
+                createIntermediateChain $INTERMEDIATE_PATH $ROOT_PATH
+                ;;
 
-	c)
-		[ -n "$ROOT_PATH" ] || die "must specify --root-path"
-		[ -n "$INTERMEDIATE_PATH" ] || die "must specify --intermediate-path"
-		[ -d "$ROOT_PATH" ] || die "not a directory: $ROOT_PATH"
-		[ -d "$INTERMEDIATE_PATH" ] || die "not a directory: $INTERMEDIATE_PATH"
-		[ -n "$CERT_NAME" ] || die "must specify --certificate-name"
+        c)
+                #[ -n "$ROOT_PATH" ] || die "must specify --root-path"
+                [ -n "$INTERMEDIATE_PATH" ] || die "must specify --intermediate-path"
+                #[ -d "$ROOT_PATH" ] || die "not a directory: $ROOT_PATH"
+                [ -d "$INTERMEDIATE_PATH" ] || die "not a directory: $INTERMEDIATE_PATH"
+                [ -n "$CERT_NAME" ] || die "must specify --certificate-name"
 
-		createPrivateKey $INTERMEDIATE_PATH 2048 $CERT_NAME
-		createCertificateCsr $CERT_NAME $INTERMEDIATE_PATH
-		signCertificateCsr $CERT_NAME $INTERMEDIATE_PATH $CERT_TYPE
-		verifyCertificate $CERT_NAME $INTERMEDIATE_PATH $ROOT_PATH
+                createPrivateKey $INTERMEDIATE_PATH 2048 $CERT_NAME
+                createCertificateCsr $CERT_NAME $INTERMEDIATE_PATH
+                signCertificateCsr $CERT_NAME $INTERMEDIATE_PATH $CERT_TYPE
+                #verifyCertificate $CERT_NAME $INTERMEDIATE_PATH $ROOT_PATH # remove requirement for root ca
+                ;;
 
-		;;
+        s)
+                # Sign client csr
+                [ -n "$INTERMEDIATE_PATH" ] || die "must specify --intermediate-path"
+                [ -d "$INTERMEDIATE_PATH" ] || die "not a directory: $INTERMEDIATE_PATH"
+                [ -n "$CSR_FILE" ] || die "must specify --csr-file"
+                [ -n "$CERT_NAME" ] || die "must specify --certificate-name"
 
-	*)
-		die "you need to specify --create-root, --create-intermediate or --create-certificate"
+                loadCSR $CERT_NAME $INTERMEDIATE_PATH $CSR_FILE
+                signCertificateCsr $CERT_NAME $INTERMEDIATE_PATH $CERT_TYPE
+                ;;
+
+        d)
+                [ -n "$INTERMEDIATE_PATH" ] || die "must specify --intermediate-path"
+                [ -d "$INTERMEDIATE_PATH" ] || die "not a directory: $INTERMEDIATE_PATH"
+                [ -n "$CERT_NAME" ] || die "must specify --certificate-name"
+
+                # add cert to crl file in intermediate
+                revokeCertificate $CERT_NAME $INTERMEDIATE_PATH
+                ;;
+
+        *)
+                die "you need to specify --create-root, --create-intermediate, --create-certificate, --sign-csr, or --revoke-certificate"
 esac
