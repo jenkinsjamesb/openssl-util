@@ -1,7 +1,5 @@
 # openssl-util
-Easily create root and intermediate CAs with OpenSSL for testing. Inspired by the excellent OpenSSL CA tutorial by Jamie Nguyen over at https://jamielinux.com/
-
-
+Easily create root and intermediate CAs, and sign and revoke certificates. Inspired by the excellent OpenSSL CA tutorial by Jamie Nguyen over at https://jamielinux.com/
 
 ```
 openssl utility script
@@ -21,9 +19,11 @@ options:
 ```
 
 ## Installation
-Clone this repository and add `openssl-util` to your `PATH`. The only requirement is that you have `openssl` installed (which can be OpenSSL or LibreSSL).
+
+Clone this repository and optionally add `openssl-util` to your `PATH`. The only requirement is that you have `openssl` installed (which can be OpenSSL or LibreSSL). Set the policies for root and intermediate CAs appropriately.
 
 ## Usage
+
 To create a self-signed root CA:
 
 	openssl-util --create-root --root-path ~/my-root
