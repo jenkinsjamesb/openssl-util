@@ -143,7 +143,7 @@ createSelfSignedRootCert() {
         [ -d $caRoot ] || die "not a directory: $caRoot"
         local caName=`deriveName $caRoot`
 
-        blatMaybe $caRoot/certs/${caName}.crt.pem
+        blatMaybe $caRoot/certs/${caName}.cert.pem
 
         mkdir -p $caRoot/certs
 
@@ -154,7 +154,7 @@ createSelfSignedRootCert() {
                         -passin file:$caRoot/private/${caName}.passphrase \
                         -new -x509 -days 7300 -sha256 \
                         -extensions v3_ca \
-                        -out $caRoot/certs/${caName}.crt.pem
+                        -out $caRoot/certs/${caName}.cert.pem
         else
                 openssl req \
                         -config $caRoot/openssl.${caName}.cnf \
@@ -163,7 +163,7 @@ createSelfSignedRootCert() {
                         -new -x509 -days 7300 -sha256 \
                         -extensions v3_ca \
                         -subj "$SUBJECT" \
-                        -out $caRoot/certs/${caName}.crt.pem
+                        -out $caRoot/certs/${caName}.cert.pem
         fi
 }
 
@@ -176,6 +176,13 @@ createIntermediateFolderAndConfig() {
         blatMaybe $caRoot
 
         mkdir -p $caRoot
+
+        mkdir -p $caRoot/certs $caRoot/crl $caRoot/csr $caRoot/newcerts $caRoot/private
+        chmod 700 $caRoot/private
+        touch $caRoot/index.txt
+        echo 1000 > $caRoot/serial
+
+        echo 1000 > $caRoot/crlnumber
 
         cat > $caRoot/openssl.${caName}.cnf <<EOF
 [ ca ]
@@ -205,7 +212,7 @@ name_opt          = ca_default
 cert_opt          = ca_default
 default_days      = 365
 preserve          = no
-policy            = policy_intermediate
+policy            = policy_loose
 unique_subject	= no
 
 # root CA policy
@@ -225,6 +232,17 @@ organizationName = match
 organizationalUnitName = match
 commonName = supplied
 emailAddress = optional
+
+[ policy_loose ]
+# Allow the intermediate CA to sign a more diverse range of certificates.
+# See the POLICY FORMAT section of the 'ca' man page.
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
 
 [ req ]
 default_bits        = 2048
@@ -300,6 +318,13 @@ createRootFolderAndConfig() {
 
         mkdir -p $caRoot
 
+        mkdir -p $caRoot/certs $caRoot/crl $caRoot/csr $caRoot/newcerts $caRoot/private
+        chmod 700 $caRoot/private
+        touch $caRoot/index.txt
+        echo 1000 > $caRoot/serial
+
+        echo 1000 > $caRoot/crlnumber
+
         cat > $caRoot/openssl.${caName}.cnf <<EOF
 # OpenSSL root CA configuration file.
 
@@ -335,7 +360,7 @@ name_opt          = ca_default
 cert_opt          = ca_default
 default_days      = 375
 preserve          = no
-policy            = policy_strict
+policy            = policy_loose
 
 [ policy_strict ]
 # The root CA should only sign intermediate certificates that match.
@@ -489,19 +514,13 @@ signIntermediateCsr() {
         [ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
         [ -d $caRoot ] || die "not a directory: $caRoot"
 
-        blatMaybe $caRoot/certs/${caName}.crt.pem
+        blatMaybe $caRoot/certs/${caName}.cert.pem
 
-        mkdir -p $caRoot/certs
-        openssl x509 -req -days 3650 \
-                -in $caRoot/csr/${caName}.csr.pem \
-                -CA $rootCaRoot/certs/${rootCaName}.crt.pem \
-                -CAkey $rootCaRoot/private/${rootCaName}.key.pem \
+        openssl ca -config $rootCaRoot/openssl.${rootCaName}.cnf -extensions v3_intermediate_ca \
                 -passin file:$rootCaRoot/private/${rootCaName}.passphrase \
-                -out $caRoot/certs/${caName}.crt.pem \
-                -extfile $rootCaRoot/openssl.${rootCaName}.cnf \
-                -extensions v3_intermediate_ca \
-                -set_serial 00 \
-                -sha256
+                -days 3650 -notext -md sha256 \
+                -in $caRoot/csr/${caName}.csr.pem \
+                -out $caRoot/certs/$caName.cert.pem -batch
 }
 
 verifyIntermediateCert() {
@@ -514,8 +533,8 @@ verifyIntermediateCert() {
         [ -d $caRoot ] || die "not a directory: $caRoot"
 
         openssl verify \
-                -CAfile $rootCaRoot/certs/${rootCaName}.crt.pem \
-                $caRoot/certs/${caName}.crt.pem
+                -CAfile $rootCaRoot/certs/${rootCaName}.cert.pem \
+                $caRoot/certs/${caName}.cert.pem
 }
 
 createIntermediateChain() {
@@ -527,9 +546,9 @@ createIntermediateChain() {
         [ -d $rootCaRoot ] || die "not a directory: $rootCaRoot"
         [ -d $caRoot ] || die "not a directory: $caRoot"
 
-        cat $caRoot/certs/${caName}.crt.pem \
-                $rootCaRoot/certs/${rootCaName}.crt.pem \
-                > $caRoot/certs/${caName}-chain.crt.pem
+        cat $caRoot/certs/${caName}.cert.pem \
+                $rootCaRoot/certs/${rootCaName}.cert.pem \
+                > $caRoot/certs/${caName}-chain.cert.pem
 }
 
 # create a CSR for a cert (beneath the intermediate)
@@ -574,18 +593,13 @@ signCertificateCsr() {
 
         [ -d $caRoot ] || die "not a directory: $caRoot"
 
-        blatMaybe $caRoot/certs/${certName}.crt.pem
+        blatMaybe $caRoot/certs/${certName}.cert.pem
 
-        openssl x509 -req -days 375 \
-                -in $caRoot/csr/${certName}.csr.pem \
-                -CA $caRoot/certs/${caName}.crt.pem \
-                -CAkey $caRoot/private/${caName}.key.pem \
+        openssl ca -config $caRoot/openssl.${caName}.cnf \
                 -passin file:$caRoot/private/${caName}.passphrase \
-                -out $caRoot/certs/${certName}.crt.pem \
-                -set_serial 00 \
-                -extfile $caRoot/openssl.${caName}.cnf \
-                -extensions $caType \
-                -sha256
+                -extensions $caType -days 375 -notext -md sha256 \
+                -in $caRoot/csr/$certName.csr.pem \
+                -out $caRoot/certs/$certName.cert.pem -batch
 }
 
 verifyCertificate() {
@@ -599,28 +613,39 @@ verifyCertificate() {
         [ -d $caRoot ] || die "not a directory: $caRoot"
 
         openssl verify \
-                -CAfile $caRoot/certs/${caName}-chain.crt.pem \
-                $caRoot/certs/${certName}.crt.pem
+                -CAfile $caRoot/certs/${caName}-chain.cert.pem \
+                $caRoot/certs/${certName}.cert.pem
 }
 
 loadCSR() {
-        echo "load csr to ./intermediate/csr/cert_name.csr.pem"
         local certName="$1"
         local caRoot="$2"
         local csrFile="$3"
 
-        # FIXME verify CSR file
+        local verifyOut=$(openssl req -text -noout -verify -in testclient.csr.pem | grep "Certificate request self-signature verify OK")
 
-        cat $csrFile > $caRoot/csr/${certName}.csr.pem
+        if [ "$verifyOut" = "Certificate request self-signature verify OK" ]; then
+            cat $csrFile > $caRoot/csr/${certName}.csr.pem
+        else
+            die "malformed CSR"
+        fi
 }
 
 revokeCertificate() {
-        echo "add cert to intermediate/crl"
+        local caRoot="$1"
+        local caName=`deriveName $caRoot`
+        local certName="$2"
 
-        #openssl ca -revoke test.pem -config my.cnf openssl ca -gencrl -out test.crl -config my.cnf
+        openssl ca -config $caRoot/openssl.${caName}.cnf \
+                -passin file:$caRoot/private/${caName}.passphrase \
+                -revoke $caRoot/certs/${certName}.cert.pem -batch
+
+        openssl ca -config $caRoot/openssl.${caName}.cnf \
+                -gencrl -passin file:$caRoot/private/${caName}.passphrase \
+                -out $caRoot/crl/${caName}.crl.pem -batch
 }
 
-MODE=''         # will be r (create-root), i (create-intermediate), c (create-cert), v (verify), d (revoke), s (sign)
+MODE=''         # will be r (create-root), i (create-intermediate), c (create-cert), v (verify), d (revoke), or s (sign)
 OVERWRITE=0
 ROOT_PATH=''
 INTERMEDIATE_PATH=''
@@ -736,7 +761,7 @@ case $MODE in
                 [ -n "$CERT_NAME" ] || die "must specify --certificate-name"
 
                 # add cert to crl file in intermediate
-                revokeCertificate $CERT_NAME $INTERMEDIATE_PATH
+                revokeCertificate $INTERMEDIATE_PATH $CERT_NAME
                 ;;
 
         *)
