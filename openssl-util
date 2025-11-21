@@ -609,15 +609,18 @@ loadCSR() {
         local caRoot="$2"
         local csrFile="$3"
 
+        # FIXME verify CSR file
+
         cat $csrFile > $caRoot/csr/${certName}.csr.pem
 }
 
 revokeCertificate() {
         echo "add cert to intermediate/crl"
+
+        #openssl ca -revoke test.pem -config my.cnf openssl ca -gencrl -out test.crl -config my.cnf
 }
 
-MODE=''				# will be r (create-root), i (create-intermediate), 
-                                        #   c (create-cert), or v (verify)
+MODE=''         # will be r (create-root), i (create-intermediate), c (create-cert), v (verify), d (revoke), s (sign)
 OVERWRITE=0
 ROOT_PATH=''
 INTERMEDIATE_PATH=''
